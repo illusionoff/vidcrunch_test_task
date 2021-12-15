@@ -106,7 +106,7 @@
             response.push(job);
           });
         }
-        return await response
+        return response
       }
 
       return {
@@ -137,7 +137,7 @@
     //   }
 
     //   async function jobsStart() {
-    //     let promise = new Promise(resolve => {
+    //     let promise = await new Promise(resolve => {
     //       if (jobs.length > 3) { // Условия предотвращения многократного изменения порядка jobs по причине рекурсивного вызова
     //         swap(jobs);
     //       }
@@ -163,7 +163,7 @@
     //         }
     //       })
     //     });
-    //     return await promise
+    //     return promise
     //   }
 
     //   return {
@@ -196,7 +196,7 @@
 		* Please don`t change the code bellow this line *
 		************************************************/
     var runner = new Parallel({
-      parallelJobs: 2
+      parallelJobs: 4
     });
 
     runner.job(step1)
