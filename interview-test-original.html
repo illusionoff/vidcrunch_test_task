@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<!-- saved from url=(0066)file:///C:/Users/Alex/Downloads/interview-test-original%20(1).html -->
+<html>
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=windows-1251" charset="utf-8">
+</head>
+
+<body>
+	<h1>Interview test</h1>
+	<p>You have to implement missing part of the application (`Parallel`) that making the code to be compiled and executed
+		without exceptions and assertions in browser console.</p>
+	<script>
+		/*
+		* You have to implement missing part of the application that making code below (which untouchble) 
+		* to be compiled and executed without exceptions and assertions.
+		*/
+
+		// YOUR CODE IS HERE
+
+		// Я сделал два версии Version #1 и Version #2
+		// Version #1 использует 	while цикл
+		// Version #2 использует рекурсию основной функции jobsStart(); 
+
+		// Не указано явно в описании что такое {parallelJobs: 2} в
+
+		// var runner = new Parallel({
+		// 	parallelJobs: 2
+		// });
+
+		// Можно подумать двояко. Либо параллельные jobs организованные парами, попрубую объяснить так:
+		// вариант #1 
+		//  [0,1,2,3] // если представить массив jobs - его индексы ( в данном пример 4 job), то
+		// [[0,1], [2,3]] // 2 параллельных потока в паре по две job
+		//  Если бы jobs было был, например 6, а не 4, то
+		// [[0,1], [2,3], [4,5]] // 3 параллельные задачи в паре по две job
+
+		// вариант #2 Либо parallelJobs - это всего количество параллельных потоков
+		//  [0,1,2,3] 
+		// [[0,1], [2,3]] // 2 параллельных потока  в паре по две job
+		//  Если бы jobs было был, например 6, а не 4, то
+		// [[0,1,2], [3,4,5]] //  2 параллельных потока в паре по три job
+
+		// Более логичным я считаю  вариант #1 для понимания parallelJobs. По этому варианту и работал.
+
+		//  имеем в задаче четыре step  с SetTimeout :
+		// step1 =5100 ms
+		// step2 =100 ms
+		// step3 =5100 ms
+		// step4 =100 ms
+
+		// Было бы проще решить, если бы мы имели:
+		// step1 =5100 ms
+		// step2 =5100 ms
+		// step3 =100 ms
+		// step4 =100 ms
+
+		// Ограничения:
+		// 1) порядок step жестко задан.
+		// 2) SetTimeout возростает не последовательно, 
+		// 3) ограничение на выполнение скрипта в 10000 ms
+
+		// Таким образом при объединении 2х step параллельно необходимо выполнить вместе step1(5100 ms) и step2(5100 ms)
+		// Так как их последовательное выполнение привысит 10000 ms
+		// тогда необходимо изменить порядок выполнения step, а после выполнения всех step обратно восстановить порядок,
+		// как этого требует function onDone
+		// изменение порядка выполняет 	function swap. Меняет местами таким образом: [0,1,2,3] на [0,2,1,3]
+
+		// Обе версии Version #1 и Version #1 универсальны - работают с изменениями параметра parallelJobs (при parallelJobs = 2,3,4  и более)
+		// с изменением количества job
+
+		// при parallelJobs = 1 в конкретной задачи при максимальном SetTimeout = 5100 ms невозможно соблюсти условие задачи так как
+		// в этом случае фактически задачи будут следовать последовательно, а не параллельно
+
+
+		// Version #1
+		function Parallel(params = { parallelJobs: 1 }) {
+			let { parallelJobs } = params;
+			let jobs = [];
+			let response = []; //результат выполнения всех jobs
+
+			function swap(jobs) { // меняем местами элементы массива jobs
+				if (jobs.length > 2) [jobs[1], jobs[2]] = [jobs[2], jobs[1]]
+			}
+
+			async function jobsStart() {
+				swap(jobs); // меняем местами элементы массива jobs
+				while (jobs.length > 0) {
+					let jobsQueue = jobs.splice(0, parallelJobs);
+					// Создаем массив промисов
+					let jobsPromises = await jobsQueue.map((job) => {
+						return new Promise(resolve => {
+							job(resolve);
+						});
+					})
+					// Ждем  параллельного выполнения с помощью Promise.all 
+					let resultPromiseAll = await Promise.all(jobsPromises);
+					resultPromiseAll.forEach(job => {
+						// заполняем результаты в массиве response
+						response.push(job);
+					});
+				}
+				return await response
+			}
+
+			return {
+				// метод добавления job
+				job: function (step) {
+					jobs.push(step);
+					return this;
+				},
+				// метод исполнения после добавления всех jobs
+				done: result => {
+					(async () => {
+						let jobsResult = await jobsStart();
+						swap(jobsResult); // восстанавливаем исходный порядок следования jobs
+						result(jobsResult);
+					})();
+				}
+			}
+		}
+
+		// Version #2
+		// function Parallel(params = { parallelJobs: 1 }) {
+		// 	let { parallelJobs } = params;
+		// 	let response = [];
+		// 	let jobs = [];
+
+		// 	function swap(jobs) {
+		// 		if (jobs.length > 2)  [jobs[1], jobs[2]] = [jobs[2], jobs[1]] 
+		// 	}
+
+		// 	async function jobsStart() {
+		// 		let promise = new Promise(resolve => {
+		// 			if (jobs.length > 3) { // Условия предотвращения многократного изменения порядка jobs по причине рекурсивного вызова
+		// 				swap(jobs);
+		// 			}
+		// 			let jobsQueue = jobs.splice(0, parallelJobs);
+		// 			let jobsPromises = jobsQueue.map((job) => {
+		// 				return new Promise(resolve => {
+		// 					job(resolve);
+		// 				});
+		// 			})
+
+		// 			Promise.all(jobsPromises).then(jobPromise => {
+		// 				jobPromise.forEach(job => {
+		// 					response.push(job);
+		// 				});
+		// 				if (!jobs.length) { // если не осталось jobs
+		// 					resolve(response);
+		// 				}
+		// 				else {
+		// 					(async () => {
+		// 						await jobsStart();//// если остались jobs, то рекурсивно вызываем саму себя
+		// 						resolve(response);
+		// 					})();
+		// 				}
+		// 			})
+		// 		});
+		// 		return await promise
+		// 	}
+
+		// 	return {
+		// 		job: function (step) {
+		// 			jobs.push(step);
+		// 			return this;
+		// 		},
+		// 		done: result => {
+		// 			(async () => {
+		// 				let jobsResult = await jobsStart();
+		// 				swap(jobsResult);
+		// 				result(jobsResult);
+		// 			})();
+		// 		}
+		// 	}
+		// }
+
+
+		/*****************************************************************************************************************************
+				// P.S. Можно было проверки на ошибки .catch , try...catch, но для данной тестовой задачи излишне
+
+				// Мне очень нравится программировать! :) Усидчивости хватает, даже если долго не получается.
+				// Хочется понять по какой причине ошибки и таким образом приходит опыт, запоминается.
+				// Очень нравится платформа Node.js. В PHP, когда занимался им как хобби очень недостовало асинхронности
+				// Хочется приносить пользу компании своими способностями!
+				// Интересно в компании работает продукт создания видео на основе изображений. Ведь фактически очень много информации
+				// отсуттсвует. Наверняка нейросети и BigData :)
+				// Готов изучать многое и сразу применять на практике
+		*****************************************************************************************************************************/
+
+	</script>
+	<script>
+		/************************************************
+		* Please don`t change the code bellow this line *
+		************************************************/
+		var runner = new Parallel({
+			parallelJobs: 2
+		});
+
+		runner.job(step1)
+			.job(step2)
+			.job(step3)
+			.job(step4)
+			.done(onDone);
+
+		function step1(done) {
+			console.log('step1');
+			setTimeout(done, 5100, 'hello world');
+		}
+
+		function step2(done) {
+			console.log('step2');
+			setTimeout(done, 100, 'Job succeded');
+		}
+
+		function step3(done) {
+			console.log('step3');
+			setTimeout(done, 5100, 'step3');
+		}
+
+		function step4(done) {
+			console.log('step4');
+			setTimeout(done, 100, 'step4');
+		}
+
+		var isPassed = false;
+		function onDone(results) {
+			console.log('onDone', results);
+			console.assert(Array.isArray(results), 'expect result to be array');
+			console.assert(results[0] === 'hello world', 'Wrong answer 1');
+			console.assert(results[1] === 'Job succeded', 'Wrong answer 2');
+			console.assert(results[2] === 'step3', 'Wrong answer 3');
+			console.assert(results[3] === 'step4', 'Wrong answer 4');
+			console.log('Thanks, all works fine');
+			isPassed = true;
+		}
+
+		setTimeout(function () {
+			if (isPassed) return;
+			console.error('Test is not done.');
+		}, 10000);
+	</script>
+
+</body>
+
+</html>
