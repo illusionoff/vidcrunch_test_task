@@ -83,6 +83,12 @@
         if (jobs.length > 2) [jobs[1], jobs[2]] = [jobs[2], jobs[1]]
       }
 
+      async function forDone(result) {
+        let jobsResult = await jobsStart();
+        swap(jobsResult); // восстанавливаем исходный порядок следования jobs
+        result(jobsResult);
+      }
+
       async function jobsStart() {
         swap(jobs); // меняем местами элементы массива jobs
         while (jobs.length > 0) {
@@ -110,70 +116,66 @@
           return this;
         },
         // метод исполнения после добавления всех jobs
-        done: result => {
-          (async () => {
-            let jobsResult = await jobsStart();
-            swap(jobsResult); // восстанавливаем исходный порядок следования jobs
-            result(jobsResult);
-          })();
-        }
+        done: (result) => forDone(result)
       }
     }
 
-		// Version #2
-		// function Parallel(params = { parallelJobs: 1 }) {
-		// 	let { parallelJobs } = params;
-		// 	let response = [];
-		// 	let jobs = [];
+    // Version #2
+    // function Parallel(params = { parallelJobs: 1 }) {
+    //   let { parallelJobs } = params;
+    //   let response = []; //результат выполнения всех jobs
+    //   let jobs = [];
 
-		// 	function swap(jobs) {
-		// 		if (jobs.length > 2)  [jobs[1], jobs[2]] = [jobs[2], jobs[1]]
-		// 	}
+    //   function swap(jobs) {// меняем местами элементы массива jobs
+    //     if (jobs.length > 2) [jobs[1], jobs[2]] = [jobs[2], jobs[1]]
+    //   }
 
-		// 	async function jobsStart() {
-		// 		let promise = new Promise(resolve => {
-		// 			if (jobs.length > 3) { // Условия предотвращения многократного изменения порядка jobs по причине рекурсивного вызова
-		// 				swap(jobs);
-		// 			}
-		// 			let jobsQueue = jobs.splice(0, parallelJobs);
-		// 			let jobsPromises = jobsQueue.map((job) => {
-		// 				return new Promise(resolve => {
-		// 					job(resolve);
-		// 				});
-		// 			})
+    //   async function forDone(result) {
+    //     let jobsResult = await jobsStart();
+    //     swap(jobsResult); // восстанавливаем исходный порядок следования jobs
+    //     result(jobsResult);
+    //   }
 
-		// 			Promise.all(jobsPromises).then(jobPromise => {
-		// 				jobPromise.forEach(job => {
-		// 					response.push(job);
-		// 				});
-		// 				if (!jobs.length) { // если не осталось jobs
-		// 					resolve(response);
-		// 				}
-		// 				else {
-		// 					(async () => {
-		// 						await jobsStart();//// если остались jobs, то рекурсивно вызываем саму себя
-		// 						resolve(response);
-		// 					})();
-		// 				}
-		// 			})
-		// 		});
-		// 		return await promise
-		// 	}
+    //   async function jobsStart() {
+    //     let promise = new Promise(resolve => {
+    //       if (jobs.length > 3) { // Условия предотвращения многократного изменения порядка jobs по причине рекурсивного вызова
+    //         swap(jobs);
+    //       }
+    //       let jobsQueue = jobs.splice(0, parallelJobs);
+    //       let jobsPromises = jobsQueue.map((job) => {
+    //         return new Promise(resolve => {
+    //           job(resolve);
+    //         });
+    //       })
 
-		// 	return {
-		// 		job: function (step) {
-		// 			jobs.push(step);
-		// 			return this;
-		// 		},
-		// 		done: result => {
-		// 			(async () => {
-		// 				let jobsResult = await jobsStart();
-		// 				swap(jobsResult);
-		// 				result(jobsResult);
-		// 			})();
-		// 		}
-		// 	}
-		// }
+    //       Promise.all(jobsPromises).then(jobPromise => {
+    //         jobPromise.forEach(job => {
+    //           response.push(job);
+    //         });
+    //         if (!jobs.length) { // если не осталось jobs
+    //           resolve(response);
+    //         }
+    //         else {
+    //           (async () => {
+    //             await jobsStart();//// если остались jobs, то рекурсивно вызываем саму себя
+    //             resolve(response);
+    //           })();
+    //         }
+    //       })
+    //     });
+    //     return await promise
+    //   }
+
+    //   return {
+    //     // метод добавления job
+    //     job: function (step) {
+    //       jobs.push(step);
+    //       return this;
+    //     },
+    //     // метод исполнения после добавления всех jobs
+    //     done: (result) => forDone(result)
+    //   }
+    // }
 
 
 		/*****************************************************************************************************************************
